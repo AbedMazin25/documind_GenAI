@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.v1 import auth
+from app.api.v1 import auth, users
 
-app = FastAPI(title="DocuMind API", version="0.2.0", docs_url="/api/docs")
+app = FastAPI(title="DocuMind API", version="0.3.0", docs_url="/api/docs")
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,7 +13,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "0.2.0"}
+    return {"status": "ok", "version": "0.3.0"}
