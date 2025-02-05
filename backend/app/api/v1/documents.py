@@ -48,8 +48,7 @@ def list_documents(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Bug: missing org_id filter — returns documents from all orgs
-    return db.query(Document).all()
+    return db.query(Document).filter(Document.org_id == current_user.org_id).all()
 
 @router.get("/{doc_id}", response_model=DocumentResponse)
 def get_document(
