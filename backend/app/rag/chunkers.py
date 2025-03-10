@@ -18,5 +18,4 @@ def chunk_text(text: str, chunk_size: int = None, overlap: int = None) -> list[s
     return [c for c in chunks if c.strip()]
 
 def split_paragraphs(text: str) -> list[str]:
-    # Bug: splits on single newline, merges paragraphs incorrectly
-    return [p.strip() for p in text.split("\n") if p.strip()]
+    return [p.strip() for p in text.split("\n\n") if p.strip()]
