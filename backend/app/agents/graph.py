@@ -5,6 +5,9 @@ from app.agents.nodes.retriever import retriever_node
 from app.agents.nodes.analyzer import analyzer_node
 from app.agents.nodes.responder import responder_node
 
+def route_decision(state: AgentState) -> str:
+    return state.get("route", "rag")
+
 def build_graph():
     g = StateGraph(AgentState)
     g.add_node("router", router_node)
@@ -13,8 +16,15 @@ def build_graph():
     g.add_node("responder", responder_node)
 
     g.set_entry_point("router")
-    # Bug: hardwired linear chain — router decision is ignored
-    g.add_edge("router", "retriever")
+    g.add_conditional_edges(
+        "router",
+        route_decision,
+        {
+            "rag": "retriever",
+            "analytical": "retriever",
+            "direct": "responder",
+        },
+    )
     g.add_edge("retriever", "analyzer")
     g.add_edge("analyzer", "responder")
     g.add_edge("responder", END)
