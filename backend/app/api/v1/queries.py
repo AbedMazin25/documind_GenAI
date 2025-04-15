@@ -5,28 +5,33 @@ from typing import Optional
 from app.db.session import get_db
 from app.models.user import User
 from app.api.deps import get_current_user
-from app.rag.chains import rag_chain
+from app.services.agent_service import AgentService
 
 router = APIRouter()
+agent_service = AgentService()
 
 class QueryRequest(BaseModel):
     question: str
     document_ids: Optional[list[str]] = None
-    k: int = 6
+    mode: str = "agent"
 
 class QueryResponse(BaseModel):
     answer: str
     sources: list[dict]
+    reasoning_steps: Optional[list[str]] = None
 
 @router.post("/", response_model=QueryResponse)
 async def query(
     req: QueryRequest,
     current_user: User = Depends(get_current_user),
 ):
-    result = await rag_chain.run(
+    result = await agent_service.run(
         question=req.question,
         org_id=str(current_user.org_id),
         document_ids=req.document_ids,
-        k=req.k,
     )
-    return QueryResponse(answer=result["answer"], sources=result["sources"])
+    return QueryResponse(
+        answer=result["answer"],
+        sources=result["sources"],
+        reasoning_steps=result.get("steps"),
+    )
