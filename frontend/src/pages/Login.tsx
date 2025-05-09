@@ -10,7 +10,6 @@ export default function Login() {
   const setUser = useAuthStore((s) => s.setUser)
   const navigate = useNavigate()
 
-  // BUG: onKeyDown on email field submits before password is entered
   const handleSubmit = async () => {
     try {
       const { data } = await api.post('/auth/login', { email, password })
@@ -33,7 +32,6 @@ export default function Login() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           className="w-full border rounded-lg px-3 py-2 mb-3 text-sm"
         />
         <input
@@ -41,6 +39,7 @@ export default function Login() {
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
           className="w-full border rounded-lg px-3 py-2 mb-4 text-sm"
         />
         <button
