@@ -8,15 +8,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// BUG: on 401, we refresh the token but never retry the original request
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
-    if (error.response?.status === 401) {
+    const original = error.config
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         const { data } = await api.post('/auth/refresh', { refresh_token: refresh })
         localStorage.setItem('access_token', data.access_token)
+        original.headers.Authorization = `Bearer ${data.access_token}`
+        return api(original)
       }
     }
     return Promise.reject(error)
