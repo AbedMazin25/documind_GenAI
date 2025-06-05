@@ -34,9 +34,9 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
-      # BUG: OPENAI_API_KEY not set — embedding tests will fail with AuthenticationError
       - run: pytest tests/ -v
         env:
           DATABASE_URL: postgresql://documind:documind@localhost:5432/documind_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
