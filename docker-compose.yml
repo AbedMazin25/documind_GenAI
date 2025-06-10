@@ -12,6 +12,13 @@ services:
       - db
       - redis
 
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
   db:
     image: postgres:16-alpine
     environment:
