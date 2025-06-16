@@ -1,0 +1,22 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - uses: azure/aks-set-context@v3
+        with:
+          resource-group: documind-rg
+          cluster-name: documind-aks
+      - run: |
+          docker build -t documindacr.azurecr.io/backend:${{ github.sha }} .
+          docker push documindacr.azurecr.io/backend:${{ github.sha }}
+          kubectl set image deployment/documind-backend backend=documindacr.azurecr.io/backend:${{ github.sha }}
