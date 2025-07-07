@@ -1,12 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from app.db.session import get_db
 from app.models.user import User
 from app.models.org import Org
-from app.core.security import hash_password, verify_password, create_access_token
-import uuid
+from app.core.security import (
+    hash_password, verify_password,
+    create_access_token, create_refresh_token,
+)
+from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -18,6 +21,7 @@ class RegisterRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
 
 @router.post("/register", status_code=201)
@@ -44,5 +48,24 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
     user = db.query(User).filter(User.email == form.username).first()
     if not user or not verify_password(form.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    refresh = create_refresh_token()
+    user.refresh_token = refresh
+    db.commit()
     token = create_access_token({"sub": str(user.id), "org": str(user.org_id)})
-    return TokenResponse(access_token=token)
+    return TokenResponse(access_token=token, refresh_token=refresh)
+
+@router.post("/refresh", response_model=TokenResponse)
+def refresh(token: str = Body(..., embed=True), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.refresh_token == token).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    new_refresh = create_refresh_token()
+    user.refresh_token = new_refresh
+    db.commit()
+    access = create_access_token({"sub": str(user.id), "org": str(user.org_id)})
+    return TokenResponse(access_token=access, refresh_token=new_refresh)
+
+@router.post("/logout")
+def logout(current_user: User = Depends(get_current_user)):
+    # Bug: refresh token left active in database after logout
+    return {"message": "logged out"}

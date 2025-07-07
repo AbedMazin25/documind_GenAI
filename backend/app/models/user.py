@@ -14,6 +14,7 @@ class User(Base):
     full_name = Column(String(255))
     role = Column(String(50), default="member")
     is_active = Column(Boolean, default=True)
+    refresh_token = Column(String(512), nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     org = relationship("Org", back_populates="users")
