@@ -66,6 +66,7 @@ def refresh(token: str = Body(..., embed=True), db: Session = Depends(get_db)):
     return TokenResponse(access_token=access, refresh_token=new_refresh)
 
 @router.post("/logout")
-def logout(current_user: User = Depends(get_current_user)):
-    # Bug: refresh token left active in database after logout
+def logout(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.refresh_token = None
+    db.commit()
     return {"message": "logged out"}
