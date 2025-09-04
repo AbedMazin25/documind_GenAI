@@ -15,9 +15,8 @@ REQUEST_LATENCY = Histogram(
 
 async def metrics_middleware(request: Request, call_next):
     start = time.time()
-    # BUG: duration calculated before response is awaited
-    duration = time.time() - start
     response = await call_next(request)
+    duration = time.time() - start
     REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
     REQUEST_LATENCY.labels(request.method, request.url.path).observe(duration)
     return response
