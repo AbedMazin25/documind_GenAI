@@ -10,6 +10,11 @@ ENTITY_PROMPT = (
     "Return JSON: {\"entities\": [{\"name\": str, \"type\": str, \"value\": str}]}"
 )
 
+RELATION_PROMPT = (
+    "Given these entities, extract relationships. "
+    "Return JSON: {\"relations\": [{\"source\": str, \"target\": str, \"relation\": str}]}"
+)
+
 class GraphRAG:
     def __init__(self):
         self.graphs: dict[str, nx.DiGraph] = {}
@@ -29,14 +34,40 @@ class GraphRAG:
             response_format={"type": "json_object"},
             temperature=0,
         )
+        # Bug: no error handling — crashes if LLM returns non-JSON (e.g. refusal)
         data = json.loads(resp.choices[0].message.content)
         return data.get("entities", [])
+
+    async def extract_relations(self, text: str, entities: list[dict]) -> list[dict]:
+        entity_names = [e["name"] for e in entities]
+        resp = await _client.chat.completions.create(
+            model=settings.openai_model,
+            messages=[
+                {"role": "system", "content": RELATION_PROMPT},
+                {"role": "user", "content": f"Entities: {entity_names}\nText: {text[:3000]}"},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0,
+        )
+        data = json.loads(resp.choices[0].message.content)
+        return data.get("relations", [])
 
     async def add_document(self, org_id: str, doc_id: str, chunks: list[str]):
         g = self._get_graph(org_id)
         for chunk in chunks:
             entities = await self.extract_entities(chunk)
+            relations = await self.extract_relations(chunk, entities)
             for ent in entities:
                 g.add_node(ent["name"], type=ent["type"], value=ent.get("value", ""))
+            for rel in relations:
+                if rel["source"] in g and rel["target"] in g:
+                    g.add_edge(rel["source"], rel["target"], relation=rel["relation"])
+
+    def get_subgraph(self, org_id: str, entity: str, hops: int = 1) -> list[dict]:
+        g = self._get_graph(org_id)
+        if entity not in g:
+            return []
+        neighbors = nx.ego_graph(g, entity, radius=hops)
+        return [{"node": n, **g.nodes[n]} for n in neighbors.nodes]
 
 graph_rag = GraphRAG()
