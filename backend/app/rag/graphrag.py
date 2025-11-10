@@ -34,9 +34,11 @@ class GraphRAG:
             response_format={"type": "json_object"},
             temperature=0,
         )
-        # Bug: no error handling — crashes if LLM returns non-JSON (e.g. refusal)
-        data = json.loads(resp.choices[0].message.content)
-        return data.get("entities", [])
+        try:
+            data = json.loads(resp.choices[0].message.content)
+            return data.get("entities", [])
+        except (json.JSONDecodeError, KeyError):
+            return []
 
     async def extract_relations(self, text: str, entities: list[dict]) -> list[dict]:
         entity_names = [e["name"] for e in entities]
@@ -49,8 +51,11 @@ class GraphRAG:
             response_format={"type": "json_object"},
             temperature=0,
         )
-        data = json.loads(resp.choices[0].message.content)
-        return data.get("relations", [])
+        try:
+            data = json.loads(resp.choices[0].message.content)
+            return data.get("relations", [])
+        except (json.JSONDecodeError, KeyError):
+            return []
 
     async def add_document(self, org_id: str, doc_id: str, chunks: list[str]):
         g = self._get_graph(org_id)
