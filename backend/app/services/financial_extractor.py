@@ -1,6 +1,7 @@
 import pandas as pd
 from pypdf import PdfReader
 import io, re
+import numpy as np
 
 class FinancialExtractor:
     def extract_tables(self, pdf_bytes: bytes) -> list[pd.DataFrame]:
@@ -26,3 +27,24 @@ class FinancialExtractor:
             return pd.DataFrame(rows[1:], columns=rows[0])
         except Exception:
             return None
+
+    def compute_ratios(self, income_df: pd.DataFrame, balance_df: pd.DataFrame) -> dict:
+        def safe_get(df, key):
+            row = df[df.iloc[:, 0].str.contains(key, case=False, na=False)]
+            if row.empty:
+                return np.nan
+            try:
+                return float(str(row.iloc[0, 1]).replace(",", "").replace("$", ""))
+            except Exception:
+                return np.nan
+
+        revenue = safe_get(income_df, "Revenue|Net Sales")
+        net_income = safe_get(income_df, "Net Income")
+        total_assets = safe_get(balance_df, "Total Assets")
+        equity = safe_get(balance_df, "Stockholders Equity|Total Equity")
+
+        return {
+            "profit_margin": net_income / revenue if revenue else None,
+            "roa": net_income / total_assets if total_assets else None,
+            "roe": net_income / equity if equity else None,
+        }

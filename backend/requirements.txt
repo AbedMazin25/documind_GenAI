@@ -22,3 +22,5 @@ langgraph==0.0.40
 rank-bm25==0.2.2
 networkx==3.3
 spacy==3.7.4
+pandas==2.2.1
+numpy==1.26.4
