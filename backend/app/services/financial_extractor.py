@@ -48,3 +48,22 @@ class FinancialExtractor:
             "roa": net_income / total_assets if total_assets else None,
             "roe": net_income / equity if equity else None,
         }
+
+    def dcf_valuation(
+        self,
+        free_cash_flows: list[float],
+        wacc: float,
+        terminal_growth: float = 0.03,
+    ) -> dict:
+        pv_fcfs = []
+        for i, fcf in enumerate(free_cash_flows, 1):
+            pv_fcfs.append(fcf / (1 + wacc) ** i)
+        terminal_value = free_cash_flows[-1] * (1 + terminal_growth) / (wacc - terminal_growth)
+        pv_terminal = terminal_value / (1 + wacc) ** len(free_cash_flows)
+        enterprise_value = sum(pv_fcfs) + pv_terminal
+        return {
+            "pv_fcfs": pv_fcfs,
+            "terminal_value": terminal_value,
+            "pv_terminal": pv_terminal,
+            "enterprise_value": enterprise_value,
+        }
