@@ -9,8 +9,7 @@ class VectorStore:
         )
 
     def get_or_create_collection(self, name: str):
-        # Bug: get_collection raises InvalidCollectionException if name doesn't exist
-        return self.client.get_collection(name)
+        return self.client.get_or_create_collection(name)
 
     def query_collection(self, name: str, query_embedding: list[float], k: int = 6, where: dict = None):
         collection = self.get_or_create_collection(name)
