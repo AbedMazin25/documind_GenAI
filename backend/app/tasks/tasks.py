@@ -4,11 +4,13 @@ from app.models.document import Document, DocumentStatus
 from app.services.document_processor import DocumentProcessor
 from app.services.embedding_service import embed_texts
 from app.rag.vectorstore import VectorStore
+from app.services.audit_service import AuditService
 from datetime import datetime
 import uuid
 
 processor = DocumentProcessor()
 vector_store = VectorStore()
+audit = AuditService()
 
 @celery_app.task(bind=True, max_retries=3)
 def process_document(self, doc_id: str):
@@ -36,11 +38,24 @@ def process_document(self, doc_id: str):
         doc.status = DocumentStatus.indexed
         doc.indexed_at = datetime.utcnow()
         db.commit()
+        audit.log(db, str(doc.org_id), None, "document.indexed", "document", doc_id)
     except Exception as exc:
         doc = db.query(Document).filter(Document.id == doc_id).first()
         if doc:
             doc.status = DocumentStatus.failed
             db.commit()
         raise self.retry(exc=exc, countdown=60)
+    finally:
+        db.close()
+
+@celery_app.task
+def sync_sharepoint(org_id: str, site_url: str, library: str):
+    from app.integrations.sharepoint import SharePointConnector
+    db = SessionLocal()
+    connector = SharePointConnector()
+    try:
+        files = connector.list_files(site_url, library)
+        for file_info in files:
+            process_document.delay(file_info["doc_id"])
     finally:
         db.close()
