@@ -1,6 +1,6 @@
 from app.agents.graph import agent_graph
 from app.agents.state import AgentState
-from typing import Optional
+from typing import Optional, AsyncGenerator
 
 class AgentService:
     async def run(self, question: str, org_id: str, document_ids: Optional[list[str]] = None) -> dict:
@@ -20,3 +20,26 @@ class AgentService:
             "sources": [d["metadata"] for d in result.get("retrieved_docs", [])],
             "steps": result.get("steps", []),
         }
+
+    async def stream(
+        self,
+        question: str,
+        org_id: str,
+        document_ids: Optional[list[str]] = None,
+    ) -> AsyncGenerator[str, None]:
+        initial: AgentState = {
+            "question": question,
+            "org_id": org_id,
+            "document_ids": document_ids,
+            "route": None,
+            "retrieved_docs": [],
+            "analysis": None,
+            "answer": None,
+            "steps": [],
+        }
+        async for event in agent_graph.astream(initial):
+            for node, state in event.items():
+                if "steps" in state and state["steps"]:
+                    yield f"[{node}] {state['steps'][-1]}"
+                if node == "responder" and state.get("answer"):
+                    yield state["answer"]
