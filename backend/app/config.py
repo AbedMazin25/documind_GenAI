@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     chunk_overlap: int = 64
     retrieval_k: int = 6
 
+    # performance
+    embed_batch_size: int = 64
+    max_concurrent_ingestions: int = 4
+    celery_concurrency: int = 8
+
     class Config:
         env_file = ".env"
 
