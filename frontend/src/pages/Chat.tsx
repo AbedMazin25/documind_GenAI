@@ -1,25 +1,43 @@
-import { useState } from 'react'
-import api from '../api/client'
+import { useState, useEffect, useRef } from 'react'
 
 interface Message { role: 'user' | 'assistant'; content: string }
 
 export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [streaming, setStreaming] = useState(false)
+  const wsRef = useRef<WebSocket | null>(null)
+  const bottomRef = useRef<HTMLDivElement>(null)
 
-  const send = async () => {
-    if (!input.trim()) return
-    const userMsg: Message = { role: 'user', content: input }
-    setMessages((m) => [...m, userMsg])
-    setInput('')
-    setLoading(true)
-    try {
-      const { data } = await api.post('/queries/', { query: input })
-      setMessages((m) => [...m, { role: 'assistant', content: data.answer }])
-    } finally {
-      setLoading(false)
+  useEffect(() => {
+    const token = localStorage.getItem('access_token')
+    const ws = new WebSocket(`ws://localhost:8000/api/v1/ws/query?token=${token}`)
+    ws.onmessage = (e) => {
+      const { type, content } = JSON.parse(e.data)
+      if (type === 'token') {
+        setMessages((prev) => {
+          const last = prev[prev.length - 1]
+          if (last?.role === 'assistant') {
+            return [...prev.slice(0, -1), { ...last, content: last.content + content }]
+          }
+          return [...prev, { role: 'assistant', content }]
+        })
+      } else if (type === 'done') {
+        setStreaming(false)
+      }
     }
+    wsRef.current = ws
+    return () => ws.close()
+  }, [])
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+  const send = () => {
+    if (!input.trim() || streaming) return
+    setMessages((m) => [...m, { role: 'user', content: input }])
+    wsRef.current?.send(JSON.stringify({ query: input }))
+    setInput('')
+    setStreaming(true)
   }
 
   return (
@@ -33,17 +51,21 @@ export default function Chat() {
             }`}>{m.content}</div>
           </div>
         ))}
-        {loading && <div className="text-gray-400 text-sm">Thinking...</div>}
+        {streaming && <div className="text-gray-400 text-sm animate-pulse">Generating...</div>}
+        <div ref={bottomRef} />
       </div>
       <div className="flex gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
-          placeholder="Ask a question about your documents..."
+          placeholder="Ask about your documents..."
           className="flex-1 border rounded-lg px-4 py-2 text-sm"
         />
-        <button onClick={send} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Send</button>
+        <button onClick={send} disabled={streaming}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50">
+          Send
+        </button>
       </div>
     </div>
   )
