@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import api from '../api/client'
 
-interface Stats { total_documents: number; total_queries: number; active_users: number }
+interface Stats {
+  total_documents: number
+  total_queries: number
+  active_users: number
+  query_trend: { date: string; count: number }[]
+}
 
 export default function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
@@ -13,17 +19,28 @@ export default function Dashboard() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-      <div className="grid grid-cols-3 gap-4">
-        {stats ? (
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        {stats && (
           <>
             <StatCard label="Documents" value={stats.total_documents} />
             <StatCard label="Queries" value={stats.total_queries} />
             <StatCard label="Active Users" value={stats.active_users} />
           </>
-        ) : (
-          <p className="text-gray-400 text-sm">Loading...</p>
         )}
       </div>
+      {stats?.query_trend && (
+        <div className="bg-white border rounded-xl p-5">
+          <h2 className="text-sm font-medium text-gray-600 mb-4">Query volume (30d)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <LineChart data={stats.query_trend}>
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Line type="monotone" dataKey="count" stroke="#3b82f6" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   )
 }
