@@ -1,35 +1,46 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import api from '../api/client'
 
 interface Doc { id: number; filename: string; status: string; created_at: string }
 
 export default function Documents() {
   const [docs, setDocs] = useState<Doc[]>([])
-  const fileRef = useRef<HTMLInputElement>(null)
+  const [dragging, setDragging] = useState(false)
 
   const load = () => api.get('/documents/').then(({ data }) => setDocs(data)).catch(() => {})
   useEffect(() => { load() }, [])
 
-  const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const upload = async (file: File) => {
     const form = new FormData()
     form.append('file', file)
     await api.post('/documents/upload', form)
     load()
   }
 
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) upload(file)
+  }, [])
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Documents</h1>
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm"
-        >
-          Upload
-        </button>
-        <input ref={fileRef} type="file" className="hidden" onChange={upload} accept=".pdf,.docx,.txt" />
+      <h1 className="text-2xl font-bold mb-6">Documents</h1>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        className={`border-2 border-dashed rounded-xl p-8 text-center mb-6 transition-colors ${
+          dragging ? 'border-blue-400 bg-blue-50' : 'border-gray-200'
+        }`}
+      >
+        <p className="text-gray-400 text-sm">Drag & drop PDF, DOCX, or TXT files here</p>
+        <label className="mt-3 inline-block cursor-pointer text-blue-600 text-sm underline">
+          or browse
+          <input type="file" className="hidden" accept=".pdf,.docx,.txt"
+            onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+        </label>
       </div>
       <div className="bg-white border rounded-xl overflow-hidden">
         <table className="w-full text-sm">
