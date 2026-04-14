@@ -3,10 +3,20 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options: [staging, production]
 
 jobs:
-  deploy:
+  deploy-staging:
+    if: github.event_name == 'push' || inputs.environment == 'staging'
     runs-on: ubuntu-latest
+    environment: staging
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v1
@@ -14,9 +24,32 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
       - uses: azure/aks-set-context@v3
         with:
-          resource-group: documind-rg
-          cluster-name: documind-aks
+          resource-group: documind-staging-rg
+          cluster-name: documind-staging-aks
       - run: |
           docker build -t documindacr.azurecr.io/backend:${{ github.sha }} .
           docker push documindacr.azurecr.io/backend:${{ github.sha }}
-          kubectl set image deployment/documind-backend backend=documindacr.azurecr.io/backend:${{ github.sha }}
+          helm upgrade --install documind ./helm \
+            --set image.tag=${{ github.sha }} \
+            --set environment=staging \
+            --namespace documind --create-namespace
+
+  deploy-production:
+    if: inputs.environment == 'production'
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - uses: azure/aks-set-context@v3
+        with:
+          resource-group: documind-prod-rg
+          cluster-name: documind-prod-aks
+      - run: |
+          helm upgrade --install documind ./helm \
+            --set image.tag=${{ github.sha }} \
+            --set environment=production \
+            --namespace documind --create-namespace
