@@ -1,5 +1,6 @@
 import uuid
 import io
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -18,6 +19,7 @@ class DocumentResponse(BaseModel):
     filename: str
     status: DocumentStatus
     chunk_count: int
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

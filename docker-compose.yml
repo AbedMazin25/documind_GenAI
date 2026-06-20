@@ -2,16 +2,25 @@ version: '3.9'
 
 services:
   backend:
-    build: .
+    build: ./backend
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://documind:documind@db:5432/documind
       - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+      - LOCAL_STORAGE_DIR=/data/uploads
+    env_file:
+      - ./backend/.env
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_started
+      chroma:
         condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -45,15 +54,38 @@ services:
     volumes:
       - redisdata:/data
 
+  chroma:
+    image: chromadb/chroma:0.4.24
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadata:/chroma/chroma
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/heartbeat')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   worker:
-    build: .
-    command: celery -A app.worker.celery_app worker --loglevel=info
+    build: ./backend
+    command: celery -A app.tasks.celery_app worker --loglevel=info
     environment:
       - DATABASE_URL=postgresql://documind:documind@db:5432/documind
       - REDIS_URL=redis://redis:6379/0
+      - CHROMA_HOST=chroma
+      - CHROMA_PORT=8000
+      - LOCAL_STORAGE_DIR=/data/uploads
+    env_file:
+      - ./backend/.env
+    volumes:
+      - uploads:/data/uploads
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      chroma:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:latest
@@ -74,3 +106,5 @@ services:
 volumes:
   pgdata:
   redisdata:
+  chromadata:
+  uploads:

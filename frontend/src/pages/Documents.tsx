@@ -1,20 +1,27 @@
 import { useEffect, useState, useCallback } from 'react'
 import api from '../api/client'
 
-interface Doc { id: number; filename: string; status: string; created_at: string }
+interface Doc { id: string; filename: string; status: string; chunk_count: number; created_at: string | null }
 
 export default function Documents() {
   const [docs, setDocs] = useState<Doc[]>([])
   const [dragging, setDragging] = useState(false)
+  const [error, setError] = useState('')
 
-  const load = () => api.get('/documents/').then(({ data }) => setDocs(data)).catch(() => {})
+  const load = () =>
+    api.get('/documents/').then(({ data }) => setDocs(data)).catch(() => setDocs([]))
   useEffect(() => { load() }, [])
 
   const upload = async (file: File) => {
+    setError('')
     const form = new FormData()
     form.append('file', file)
-    await api.post('/documents/upload', form)
-    load()
+    try {
+      await api.post('/documents/', form)
+      load()
+    } catch {
+      setError(`Failed to upload ${file.name}`)
+    }
   }
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -27,6 +34,7 @@ export default function Documents() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Documents</h1>
+      {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true) }}
         onDragLeave={() => setDragging(false)}
@@ -57,10 +65,16 @@ export default function Documents() {
                 <td className="px-4 py-3">{d.filename}</td>
                 <td className="px-4 py-3">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    d.status === 'ready' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    d.status === 'indexed'
+                      ? 'bg-green-100 text-green-700'
+                      : d.status === 'failed'
+                      ? 'bg-red-100 text-red-700'
+                      : 'bg-yellow-100 text-yellow-700'
                   }`}>{d.status}</span>
                 </td>
-                <td className="px-4 py-3 text-gray-400">{new Date(d.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3 text-gray-400">
+                  {d.created_at ? new Date(d.created_at).toLocaleDateString() : '—'}
+                </td>
               </tr>
             ))}
           </tbody>
