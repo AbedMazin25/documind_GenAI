@@ -16,14 +16,40 @@ def org_stats(
     db: Session = Depends(get_db),
 ):
     doc_count = db.query(Document).filter(Document.org_id == admin.org_id).count()
-    user_count = db.query(User).filter(User.org_id == admin.org_id).count()
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-    queries_30d = db.query(func.count(AuditLog.id)).filter(
-        AuditLog.org_id == admin.org_id,
-        AuditLog.action == "query",
-        AuditLog.created_at >= thirty_days_ago,
-    ).scalar()
-    return {"documents": doc_count, "users": user_count, "queries_30d": queries_30d}
+    user_count = db.query(User).filter(
+        User.org_id == admin.org_id, User.is_active == True
+    ).count()
+    thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).date()
+
+    query_rows = (
+        db.query(
+            func.date(AuditLog.created_at).label("day"),
+            func.count(AuditLog.id).label("count"),
+        )
+        .filter(
+            AuditLog.org_id == admin.org_id,
+            AuditLog.action == "query",
+            AuditLog.created_at >= thirty_days_ago,
+        )
+        .group_by(func.date(AuditLog.created_at))
+        .all()
+    )
+    counts_by_day = {str(row.day): int(row.count) for row in query_rows}
+
+    query_trend = []
+    total_queries = 0
+    for i in range(29, -1, -1):
+        day = (datetime.utcnow() - timedelta(days=i)).date().isoformat()
+        c = counts_by_day.get(day, 0)
+        total_queries += c
+        query_trend.append({"date": day[5:], "count": c})
+
+    return {
+        "total_documents": doc_count,
+        "total_queries": total_queries,
+        "active_users": user_count,
+        "query_trend": query_trend,
+    }
 
 @router.get("/audit")
 def audit_log(

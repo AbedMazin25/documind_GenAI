@@ -20,15 +20,11 @@ export default function Dashboard() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
       <div className="grid grid-cols-3 gap-4 mb-8">
-        {stats && (
-          <>
-            <StatCard label="Documents" value={stats.total_documents} />
-            <StatCard label="Queries" value={stats.total_queries} />
-            <StatCard label="Active Users" value={stats.active_users} />
-          </>
-        )}
+        <StatCard label="Documents" value={stats?.total_documents} />
+        <StatCard label="Queries" value={stats?.total_queries} />
+        <StatCard label="Active Users" value={stats?.active_users} />
       </div>
-      {stats?.query_trend && (
+      {stats?.query_trend && stats.query_trend.length > 0 && (
         <div className="bg-white border rounded-xl p-5">
           <h2 className="text-sm font-medium text-gray-600 mb-4">Query volume (30d)</h2>
           <ResponsiveContainer width="100%" height={200}>
@@ -45,11 +41,11 @@ export default function Dashboard() {
   )
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value }: { label: string; value?: number }) {
   return (
     <div className="bg-white rounded-xl border p-5">
       <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-3xl font-bold mt-1">{value.toLocaleString()}</p>
+      <p className="text-3xl font-bold mt-1">{(value ?? 0).toLocaleString()}</p>
     </div>
   )
 }
