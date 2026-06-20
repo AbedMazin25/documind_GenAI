@@ -51,6 +51,51 @@ def org_stats(
         "query_trend": query_trend,
     }
 
+@router.get("/analytics")
+def analytics(
+    admin: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    fourteen_days_ago = (datetime.utcnow() - timedelta(days=14)).date()
+    rows = (
+        db.query(
+            func.date(AuditLog.created_at).label("day"),
+            func.count(AuditLog.id).label("count"),
+        )
+        .filter(
+            AuditLog.org_id == admin.org_id,
+            AuditLog.action == "query",
+            AuditLog.created_at >= fourteen_days_ago,
+        )
+        .group_by(func.date(AuditLog.created_at))
+        .all()
+    )
+    counts_by_day = {str(r.day): int(r.count) for r in rows}
+    queries_by_day = []
+    for i in range(13, -1, -1):
+        day = (datetime.utcnow() - timedelta(days=i)).date().isoformat()
+        queries_by_day.append({"date": day[5:], "count": counts_by_day.get(day, 0)})
+
+    type_rows = (
+        db.query(Document.mime_type, func.count(Document.id))
+        .filter(Document.org_id == admin.org_id)
+        .group_by(Document.mime_type)
+        .all()
+    )
+    label_map = {
+        "application/pdf": "PDF",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+        "application/msword": "DOC",
+        "text/plain": "TXT",
+    }
+    docs_by_type = [
+        {"type": label_map.get(mime, mime or "Unknown"), "count": int(count)}
+        for mime, count in type_rows
+    ]
+
+    return {"queries_by_day": queries_by_day, "docs_by_type": docs_by_type}
+
+
 @router.get("/audit")
 def audit_log(
     page: int = Query(1, ge=1),

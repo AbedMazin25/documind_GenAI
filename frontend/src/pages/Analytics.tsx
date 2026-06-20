@@ -8,7 +8,10 @@ export default function Analytics() {
   const [data, setData] = useState<any>(null)
 
   useEffect(() => {
-    api.get('/admin/analytics').then(({ data }) => setData(data)).catch(() => {})
+    api
+      .get('/admin/analytics')
+      .then(({ data }) => setData(data))
+      .catch(() => setData({ queries_by_day: [], docs_by_type: [] }))
   }, [])
 
   if (!data) return <p className="text-gray-400 text-sm">Loading...</p>
@@ -20,7 +23,7 @@ export default function Analytics() {
         <div className="bg-white border rounded-xl p-5">
           <h2 className="text-sm font-medium text-gray-600 mb-4">Queries by Day</h2>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={data.queries_by_day}>
+            <BarChart data={data.queries_by_day || []}>
               <XAxis dataKey="date" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
@@ -32,8 +35,8 @@ export default function Analytics() {
           <h2 className="text-sm font-medium text-gray-600 mb-4">Documents by Type</h2>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={data.docs_by_type} dataKey="count" nameKey="type" cx="50%" cy="50%" outerRadius={80}>
-                {data.docs_by_type.map((_: any, i: number) => (
+              <Pie data={data.docs_by_type || []} dataKey="count" nameKey="type" cx="50%" cy="50%" outerRadius={80}>
+                {(data.docs_by_type || []).map((_: any, i: number) => (
                   <Cell key={i} fill={COLORS[i % COLORS.length]} />
                 ))}
               </Pie>
