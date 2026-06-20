@@ -12,14 +12,21 @@ api.interceptors.response.use(
   (r) => r,
   async (error) => {
     const original = error.config
-    if (error.response?.status === 401 && !original._retry) {
+    const isRefreshCall = original?.url?.includes('/auth/refresh')
+    if (error.response?.status === 401 && !original._retry && !isRefreshCall) {
       original._retry = true
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
-        const { data } = await api.post('/auth/refresh', { refresh_token: refresh })
-        localStorage.setItem('access_token', data.access_token)
-        original.headers.Authorization = `Bearer ${data.access_token}`
-        return api(original)
+        try {
+          const { data } = await api.post('/auth/refresh', { token: refresh })
+          localStorage.setItem('access_token', data.access_token)
+          if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+          original.headers.Authorization = `Bearer ${data.access_token}`
+          return api(original)
+        } catch {
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+        }
       }
     }
     return Promise.reject(error)

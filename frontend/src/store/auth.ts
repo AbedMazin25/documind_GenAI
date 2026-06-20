@@ -1,10 +1,12 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 interface User {
-  id: number
+  id: string
   email: string
+  full_name?: string
   role: string
-  org_id: number
+  org_id: string
 }
 
 interface AuthState {
@@ -13,12 +15,17 @@ interface AuthState {
   logout: () => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  setUser: (u) => set({ user: u }),
-  logout: () => {
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    set({ user: null })
-  },
-}))
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      setUser: (u) => set({ user: u }),
+      logout: () => {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+        set({ user: null })
+      },
+    }),
+    { name: 'documind-auth' }
+  )
+)
