@@ -21,13 +21,8 @@ class AgentService:
             "steps": result.get("steps", []),
         }
 
-    async def stream(
-        self,
-        question: str,
-        org_id: str,
-        document_ids: Optional[list[str]] = None,
-    ) -> AsyncGenerator[str, None]:
-        initial: AgentState = {
+    def _initial_state(self, question, org_id, document_ids) -> AgentState:
+        return {
             "question": question,
             "org_id": org_id,
             "document_ids": document_ids,
@@ -37,9 +32,34 @@ class AgentService:
             "answer": None,
             "steps": [],
         }
-        async for event in agent_graph.astream(initial):
+
+    async def stream(
+        self,
+        question: str,
+        org_id: str,
+        document_ids: Optional[list[str]] = None,
+    ) -> AsyncGenerator[str, None]:
+        async for event in agent_graph.astream(
+            self._initial_state(question, org_id, document_ids)
+        ):
             for node, state in event.items():
-                if "steps" in state and state["steps"]:
-                    yield f"[{node}] {state['steps'][-1]}"
                 if node == "responder" and state.get("answer"):
                     yield state["answer"]
+
+    async def stream_events(
+        self,
+        question: str,
+        org_id: str,
+        document_ids: Optional[list[str]] = None,
+    ) -> AsyncGenerator[dict, None]:
+        """Yields structured events: {'type': 'status', 'content': ...} for
+        intermediate reasoning steps, and {'type': 'token', 'content': ...} for
+        the user-facing answer."""
+        async for event in agent_graph.astream(
+            self._initial_state(question, org_id, document_ids)
+        ):
+            for node, state in event.items():
+                if node == "responder" and state.get("answer"):
+                    yield {"type": "token", "content": state["answer"]}
+                elif "steps" in state and state["steps"]:
+                    yield {"type": "status", "content": state["steps"][-1]}

@@ -6,6 +6,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
+  const [status, setStatus] = useState('')
   const wsRef = useRef<WebSocket | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -15,6 +16,7 @@ export default function Chat() {
     ws.onmessage = (e) => {
       const { type, content } = JSON.parse(e.data)
       if (type === 'token') {
+        setStatus('')
         setMessages((prev) => {
           const last = prev[prev.length - 1]
           if (last?.role === 'assistant') {
@@ -22,8 +24,11 @@ export default function Chat() {
           }
           return [...prev, { role: 'assistant', content }]
         })
+      } else if (type === 'status') {
+        setStatus('Thinking...')
       } else if (type === 'done') {
         setStreaming(false)
+        setStatus('')
       }
     }
     wsRef.current = ws
@@ -38,6 +43,7 @@ export default function Chat() {
     wsRef.current?.send(JSON.stringify({ query: input }))
     setInput('')
     setStreaming(true)
+    setStatus('Thinking...')
   }
 
   return (
@@ -51,7 +57,9 @@ export default function Chat() {
             }`}>{m.content}</div>
           </div>
         ))}
-        {streaming && <div className="text-gray-400 text-sm animate-pulse">Generating...</div>}
+        {streaming && (
+          <div className="text-gray-400 text-sm animate-pulse">{status || 'Generating...'}</div>
+        )}
         <div ref={bottomRef} />
       </div>
       <div className="flex gap-2">

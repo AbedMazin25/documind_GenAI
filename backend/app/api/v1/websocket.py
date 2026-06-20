@@ -34,20 +34,18 @@ async def ws_query(websocket: WebSocket):
                 continue
 
             try:
-                async for chunk in agent_service.stream(
+                async for event in agent_service.stream_events(
                     question=question,
                     org_id=org_id,
                     document_ids=document_ids,
                 ):
-                    await websocket.send_text(
-                        json.dumps({"type": "token", "content": chunk})
-                    )
+                    await websocket.send_text(json.dumps(event))
             except Exception as exc:  # noqa: BLE001
                 await websocket.send_text(
                     json.dumps(
                         {
                             "type": "token",
-                            "content": f"\n[error generating response: {exc}]",
+                            "content": "Sorry, something went wrong generating a response.",
                         }
                     )
                 )
