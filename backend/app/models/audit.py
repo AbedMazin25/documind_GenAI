@@ -12,6 +12,6 @@ class AuditLog(Base):
     action = Column(String(100), nullable=False)
     resource_type = Column(String(100))
     resource_id = Column(String(255))
-    metadata = Column(JSON, default=dict)
+    extra = Column(JSON, default=dict)
     ip_address = Column(String(45))
     created_at = Column(DateTime, server_default=func.now(), index=True)

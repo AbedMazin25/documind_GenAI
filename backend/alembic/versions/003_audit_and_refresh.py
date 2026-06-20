@@ -17,7 +17,7 @@ def upgrade():
         sa.Column('action', sa.String(100), nullable=False),
         sa.Column('resource_type', sa.String(100)),
         sa.Column('resource_id', sa.String(255)),
-        sa.Column('metadata', postgresql.JSON(), server_default='{}'),
+        sa.Column('extra', postgresql.JSON(), server_default='{}'),
         sa.Column('ip_address', sa.String(45)),
         sa.Column('created_at', sa.DateTime(), server_default=sa.func.now()),
     )

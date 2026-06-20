@@ -12,10 +12,16 @@ export default function Login() {
 
   const handleSubmit = async () => {
     try {
-      const { data } = await api.post('/auth/login', { email, password })
+      const form = new URLSearchParams()
+      form.append('username', email)
+      form.append('password', password)
+      const { data } = await api.post('/auth/login', form, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      })
       localStorage.setItem('access_token', data.access_token)
       localStorage.setItem('refresh_token', data.refresh_token)
-      setUser(data.user)
+      const { data: me } = await api.get('/users/me')
+      setUser(me)
       navigate('/')
     } catch {
       setError('Invalid credentials')

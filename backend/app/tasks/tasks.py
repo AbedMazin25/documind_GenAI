@@ -9,11 +9,11 @@ from datetime import datetime
 import uuid
 
 processor = DocumentProcessor()
-vector_store = VectorStore()
 audit = AuditService()
 
 @celery_app.task(bind=True, max_retries=3)
 def process_document(self, doc_id: str):
+    vector_store = VectorStore()
     db = SessionLocal()
     try:
         doc = db.query(Document).filter(Document.id == doc_id).first()

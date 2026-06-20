@@ -22,7 +22,7 @@ class AuditService:
             action=action,
             resource_type=resource_type,
             resource_id=resource_id,
-            metadata=metadata or {},
+            extra=metadata or {},
             ip_address=ip_address,
         )
         db.add(entry)

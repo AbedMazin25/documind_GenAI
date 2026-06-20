@@ -3,8 +3,6 @@ from app.rag.vectorstore import VectorStore
 from app.services.embedding_service import embed_query
 from app.config import settings
 
-vector_store = VectorStore()
-
 def _rrf(rank_lists: list[list[int]], k: int = 60) -> list[float]:
     scores = {}
     for ranks in rank_lists:
@@ -13,6 +11,15 @@ def _rrf(rank_lists: list[list[int]], k: int = 60) -> list[float]:
     return scores
 
 class HybridRetriever:
+    def __init__(self):
+        self._vector_store = None
+
+    @property
+    def vector_store(self) -> VectorStore:
+        if self._vector_store is None:
+            self._vector_store = VectorStore()
+        return self._vector_store
+
     def retrieve(
         self,
         question: str,
@@ -25,7 +32,7 @@ class HybridRetriever:
         where = {}
         if document_ids:
             where["doc_id"] = {"$in": document_ids}
-        dense_res = vector_store.query_collection(org_id, query_vec, k=k * 2, where=where or None)
+        dense_res = self.vector_store.query_collection(org_id, query_vec, k=k * 2, where=where or None)
         dense_docs = dense_res.get("documents", [[]])[0]
         dense_metas = dense_res.get("metadatas", [[]])[0]
         dense_distances = dense_res.get("distances", [[]])[0]
